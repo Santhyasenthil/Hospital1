@@ -1,7 +1,6 @@
 package com.hospital.config;
 
 import com.hospital.security.JwtAuthFilter;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -26,9 +25,6 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
 
-    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
-    private String[] allowedOrigins;
-
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
     }
@@ -40,11 +36,19 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // 1. Intha line thaan mukkiam: Root path-ah allow pannum
+                .requestMatchers("/", "/index.html", "/favicon.ico", "/error").permitAll()
+                
+                // 2. Public API endpoints
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/doctors/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/slots/**").permitAll()
+                
+                // 3. Role based access
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/doctor/**").hasAnyRole("DOCTOR", "ADMIN")
+                
+                // 4. Matha ellathukkum Token venum
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -55,7 +59,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Allow all Vercel preview URLs and local dev
         config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList("*"));
